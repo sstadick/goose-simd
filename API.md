@@ -7,18 +7,20 @@
 - [`goosimd::U8x16`](#api-3)
 - [`goosimd::U8x32`](#api-4)
 - [`goosimd::load`](#api-5)
-- [`goosimd::eq`](#api-6)
-- [`goosimd::bit_and`](#api-7)
-- [`goosimd::bit_or`](#api-8)
-- [`goosimd::bit_not`](#api-9)
-- [`goosimd::to_bits`](#api-10)
-- [`goosimd::first`](#api-11)
-- [`goosimd::last`](#api-12)
-- [`goosimd::load_u16`](#api-13)
-- [`goosimd::load_u32`](#api-14)
-- [`goosimd::load_u64`](#api-15)
-- [`goosimd::find_byte`](#api-16)
-- [`goosimd::find_pair`](#api-17)
+- [`goosimd::splat`](#api-6)
+- [`goosimd::eq`](#api-7)
+- [`goosimd::eq`](#api-8)
+- [`goosimd::bit_and`](#api-9)
+- [`goosimd::bit_or`](#api-10)
+- [`goosimd::bit_not`](#api-11)
+- [`goosimd::to_bits`](#api-12)
+- [`goosimd::first`](#api-13)
+- [`goosimd::last`](#api-14)
+- [`goosimd::load_u16`](#api-15)
+- [`goosimd::load_u32`](#api-16)
+- [`goosimd::load_u64`](#api-17)
+- [`goosimd::find_byte`](#api-18)
+- [`goosimd::find_pair`](#api-19)
 
 <a id="api-1"></a>
 
@@ -93,7 +95,7 @@ assert(v.eq('5').last() == 31);
 
 ## `goosimd::load`
 
-[source](goosimd.goose#L66-L66)
+[source](goosimd.goose#L68-L68)
 
 ```goose
 inline fn load<V>(s: const u8[:]) -> V
@@ -110,9 +112,26 @@ assert(v.eq('p').first() == 15); // The trailing ! is not loaded.
 
 <a id="api-6"></a>
 
+## `goosimd::splat`
+
+[source](goosimd.goose#L78-L78)
+
+```goose
+inline fn splat<V>(byte: u8) -> V
+```
+
+Fill every lane with byte. V must be U8x16 or U8x32.
+
+```goose
+let v = goosimd::splat<goosimd::U8x32>(255);
+assert(v.eq(255).to_bits() == 0xFFFFFFFF);
+```
+
+<a id="api-7"></a>
+
 ## `goosimd::eq`
 
-[source](goosimd.goose#L74-L74)
+[source](goosimd.goose#L87-L87)
 
 ```goose
 inline fn eq<L>(v: Vec<L>, x: u8) -> Mask<L>
@@ -126,11 +145,30 @@ assert(v.eq('a').to_bits() == 5); // Lanes 0 and 2.
 assert(v.eq('z').first() == -1);
 ```
 
-<a id="api-7"></a>
+<a id="api-8"></a>
+
+## `goosimd::eq`
+
+[source](goosimd.goose#L96-L96)
+
+```goose
+inline fn eq<L>(a: Vec<L>, b: Vec<L>) -> Mask<L>
+```
+
+Compare corresponding lanes of two vectors of the same width.
+Equal lanes contain 0xff; unequal lanes contain 0.
+
+```goose
+let a = goosimd::load<goosimd::U8x16>("abcdefghijklmnop");
+let b = goosimd::load<goosimd::U8x16>("aXcXXXXXXXXXXXXp");
+assert(a.eq(b).to_bits() == 0x8005);
+```
+
+<a id="api-9"></a>
 
 ## `goosimd::bit_and`
 
-[source](goosimd.goose#L82-L82)
+[source](goosimd.goose#L104-L104)
 
 ```goose
 inline fn bit_and<L>(a: Mask<L>, b: Mask<L>) -> Mask<L>
@@ -144,11 +182,11 @@ let b = goosimd::load<goosimd::U8x16>("xxaxxxxxxxxxxxxx").eq('a');
 assert(a.bit_and(b).to_bits() == 4); // Only lane 2.
 ```
 
-<a id="api-8"></a>
+<a id="api-10"></a>
 
 ## `goosimd::bit_or`
 
-[source](goosimd.goose#L89-L89)
+[source](goosimd.goose#L111-L111)
 
 ```goose
 inline fn bit_or<L>(a: Mask<L>, b: Mask<L>) -> Mask<L>
@@ -161,11 +199,11 @@ let v = goosimd::load<goosimd::U8x16>("abcdefghijklmnop");
 assert(v.eq('a').bit_or(v.eq('d')).to_bits() == 9);
 ```
 
-<a id="api-9"></a>
+<a id="api-11"></a>
 
 ## `goosimd::bit_not`
 
-[source](goosimd.goose#L97-L97)
+[source](goosimd.goose#L119-L119)
 
 ```goose
 inline fn bit_not<L>(m: Mask<L>) -> Mask<L>
@@ -179,11 +217,11 @@ assert(mask.bit_not().first() == 1);
 assert(mask.bit_not().to_bits() == 65534); // Only the low 16 bits.
 ```
 
-<a id="api-10"></a>
+<a id="api-12"></a>
 
 ## `goosimd::to_bits`
 
-[source](goosimd.goose#L105-L105)
+[source](goosimd.goose#L127-L127)
 
 ```goose
 inline fn to_bits<L>(m: Mask<L>) -> u32
@@ -197,11 +235,11 @@ let v = goosimd::load<goosimd::U8x32>("abcdefghijklmnopqrstuvwxyz012345");
 assert(v.eq('5').to_bits() == 0x80000000);
 ```
 
-<a id="api-11"></a>
+<a id="api-13"></a>
 
 ## `goosimd::first`
 
-[source](goosimd.goose#L113-L116)
+[source](goosimd.goose#L135-L138)
 
 ```goose
 inline fn first<L>(m: Mask<L>) -> i64
@@ -215,11 +253,11 @@ assert(v.eq('a').first() == 0);
 assert(v.eq('z').first() == -1);
 ```
 
-<a id="api-12"></a>
+<a id="api-14"></a>
 
 ## `goosimd::last`
 
-[source](goosimd.goose#L124-L127)
+[source](goosimd.goose#L146-L149)
 
 ```goose
 inline fn last<L>(m: Mask<L>) -> i64
@@ -233,11 +271,11 @@ assert(v.eq('a').last() == 2);
 assert(v.eq('z').last() == -1);
 ```
 
-<a id="api-13"></a>
+<a id="api-15"></a>
 
 ## `goosimd::load_u16`
 
-[source](goosimd.goose#L139-L142)
+[source](goosimd.goose#L161-L164)
 
 ```goose
 inline fn load_u16(s: const u8[:]) -> u16
@@ -250,11 +288,11 @@ requirements. Asserts s.len >= 2. Not a portable serialization primitive.
 assert(goosimd::load_u16("aa!") == 0x6161); // Same value on either endianness.
 ```
 
-<a id="api-14"></a>
+<a id="api-16"></a>
 
 ## `goosimd::load_u32`
 
-[source](goosimd.goose#L149-L152)
+[source](goosimd.goose#L171-L174)
 
 ```goose
 inline fn load_u32(s: const u8[:]) -> u32
@@ -267,11 +305,11 @@ requirements. Asserts s.len >= 4. Not a portable serialization primitive.
 assert(goosimd::load_u32("aaaa!") == 0x61616161);
 ```
 
-<a id="api-15"></a>
+<a id="api-17"></a>
 
 ## `goosimd::load_u64`
 
-[source](goosimd.goose#L159-L162)
+[source](goosimd.goose#L181-L184)
 
 ```goose
 inline fn load_u64(s: const u8[:]) -> u64
@@ -284,11 +322,11 @@ requirements. Asserts s.len >= 8. Not a portable serialization primitive.
 assert(goosimd::load_u64("aaaaaaaa!") == 0x6161616161616161);
 ```
 
-<a id="api-16"></a>
+<a id="api-18"></a>
 
 ## `goosimd::find_byte`
 
-[source](goosimd.goose#L173-L182)
+[source](goosimd.goose#L195-L204)
 
 ```goose
 simd fn find_byte(s: const u8[:], byte: u8) -> i64
@@ -304,11 +342,11 @@ assert(goosimd::find_byte("goose", 'x') == -1);
 assert(goosimd::find_byte("", 'g') == -1);
 ```
 
-<a id="api-17"></a>
+<a id="api-19"></a>
 
 ## `goosimd::find_pair`
 
-[source](goosimd.goose#L192-L205)
+[source](goosimd.goose#L214-L227)
 
 ```goose
 simd fn find_pair(s: const u8[:], a: u8, b: u8) -> i64

@@ -37,6 +37,8 @@ extern fn load16_raw(s: const u8[:]) -> U8x16 = "goosimd_load16";
 extern fn load32_raw(s: const u8[:]) -> U8x32 = "goosimd_load32";
 extern fn eq_impl(v: U8x16, x: u8) -> Mask<u8[16]> = "goosimd_eq16";
 extern fn eq_impl(v: U8x32, x: u8) -> Mask<u8[32]> = "goosimd_eq32";
+extern fn eq_impl(a: U8x16, b: U8x16) -> Mask<u8[16]> = "goosimd_eqv16";
+extern fn eq_impl(a: U8x32, b: U8x32) -> Mask<u8[32]> = "goosimd_eqv32";
 extern fn and_impl(a: Mask<u8[16]>, b: Mask<u8[16]>) -> Mask<u8[16]> = "goosimd_and16";
 extern fn and_impl(a: Mask<u8[32]>, b: Mask<u8[32]>) -> Mask<u8[32]> = "goosimd_and32";
 extern fn or_impl(a: Mask<u8[16]>, b: Mask<u8[16]>) -> Mask<u8[16]> = "goosimd_or16";
@@ -64,6 +66,17 @@ inline fn load_as(v: U8x32, s: const u8[:]) -> U8x32 {
 // assert(v.eq('p').first() == 15); // The trailing ! is not loaded.
 // ```
 inline fn load<V>(s: const u8[:]) -> V { return load_as(default<V>(), s); }
+
+inline fn splat_as(v: U8x16, byte: u8) -> U8x16 { return U8x16 { lanes: [byte; 16] }; }
+inline fn splat_as(v: U8x32, byte: u8) -> U8x32 { return U8x32 { lanes: [byte; 32] }; }
+// Fill every lane with byte. V must be U8x16 or U8x32.
+//
+// ```goose
+// let v = goosimd::splat<goosimd::U8x32>(255);
+// assert(v.eq(255).to_bits() == 0xFFFFFFFF);
+// ```
+inline fn splat<V>(byte: u8) -> V { return splat_as(default<V>(), byte); }
+
 // Compare each byte lane to x, returning 0xff for equal lanes and 0 otherwise.
 //
 // ```goose
@@ -72,6 +85,15 @@ inline fn load<V>(s: const u8[:]) -> V { return load_as(default<V>(), s); }
 // assert(v.eq('z').first() == -1);
 // ```
 inline fn eq<L>(v: Vec<L>, x: u8) -> Mask<L> { return eq_impl(v, x); }
+// Compare corresponding lanes of two vectors of the same width.
+// Equal lanes contain 0xff; unequal lanes contain 0.
+//
+// ```goose
+// let a = goosimd::load<goosimd::U8x16>("abcdefghijklmnop");
+// let b = goosimd::load<goosimd::U8x16>("aXcXXXXXXXXXXXXp");
+// assert(a.eq(b).to_bits() == 0x8005);
+// ```
+inline fn eq<L>(a: Vec<L>, b: Vec<L>) -> Mask<L> { return eq_impl(a, b); }
 // Keep lanes matched by both masks. The masks must have the same width.
 //
 // ```goose

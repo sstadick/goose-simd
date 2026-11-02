@@ -33,14 +33,22 @@ fn main() {
     // Every byte value, lane and alignment, including bit 31 of the mask.
     for offset in 32 {
         for value in 256 {
+            let broadcast = goosimd::splat<goosimd::U8x32>(value as u8);
+            let broadcast16 = goosimd::splat<goosimd::U8x16>(value as u8);
+            check_mask(broadcast.eq(value as u8), 0xFFFFFFFF, 32);
+            check_mask(broadcast16.eq(value as u8), 0xFFFF, 16);
             for lane in 32 {
                 for i in 32 { data[offset + i] = (value as u8) ^ 1; }
                 data[offset + lane] = value as u8;
                 let eq = goosimd::load<goosimd::U8x32>(data[offset..offset + 32]).eq(value as u8);
                 check_mask(eq, (1 as u32) << lane, 32);
+                check_mask(goosimd::load<goosimd::U8x32>(data[offset..offset + 32]).eq(broadcast),
+                    (1 as u32) << lane, 32);
                 let eq16 = goosimd::load<goosimd::U8x16>(data[offset..offset + 16]).eq(value as u8);
                 let mask16: u32 = if lane < 16 { (1 as u32) << lane } else { 0 };
                 check_mask(eq16, mask16, 16);
+                check_mask(goosimd::load<goosimd::U8x16>(data[offset..offset + 16]).eq(broadcast16),
+                    mask16, 16);
             }
         }
     }
@@ -62,6 +70,9 @@ fn main() {
         }
         let x = goosimd::load<goosimd::U8x32>(data).eq(1);
         let y = goosimd::load<goosimd::U8x32>(other).eq(1);
+        let equal = goosimd::load<goosimd::U8x32>(data).eq(goosimd::load<goosimd::U8x32>(other));
+        check_mask(equal, ~(left ^ right), 32);
+        check_mask(equal.bit_not(), left ^ right, 32);
         check_mask(x.bit_and(y), left & right, 32);
         check_mask(x.bit_or(y), left | right, 32);
         check_mask(x.bit_not(), ~left, 32);
@@ -69,6 +80,9 @@ fn main() {
         check_mask(x.bit_and(x.bit_not()), 0, 32);
         let x16 = goosimd::load<goosimd::U8x16>(data).eq(1);
         let y16 = goosimd::load<goosimd::U8x16>(other).eq(1);
+        let equal16 = goosimd::load<goosimd::U8x16>(data).eq(goosimd::load<goosimd::U8x16>(other));
+        check_mask(equal16, ~(left ^ right) & 0xFFFF, 16);
+        check_mask(equal16.bit_not(), (left ^ right) & 0xFFFF, 16);
         check_mask(x16.bit_and(y16), (left & right) & 0xFFFF, 16);
         check_mask(x16.bit_or(y16), (left | right) & 0xFFFF, 16);
         check_mask(x16.bit_not(), (~left) & 0xFFFF, 16);

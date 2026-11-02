@@ -42,6 +42,15 @@ typedef uint8_t goosimd_v32 __attribute__((vector_size(32)));
         memcpy((uint8_t *)&(out) + offset, &x, sizeof x); \
     } \
 } while (0)
+#define GOOSIMD_EQV(N, out, a, b) do { \
+    for (int offset = 0; offset < N; offset += GOOSIMD_WIDTH(N)) { \
+        GOOSIMD_TYPE(GOOSIMD_WIDTH(N)) x, y; \
+        memcpy(&x, (const uint8_t *)&(a) + offset, sizeof x); \
+        memcpy(&y, (const uint8_t *)&(b) + offset, sizeof y); \
+        x = (GOOSIMD_TYPE(GOOSIMD_WIDTH(N)))(x == y); \
+        memcpy((uint8_t *)&(out) + offset, &x, sizeof x); \
+    } \
+} while (0)
 #define GOOSIMD_BINARY(N, out, a, b, op) do { \
     for (int offset = 0; offset < N; offset += GOOSIMD_WIDTH(N)) { \
         GOOSIMD_TYPE(GOOSIMD_WIDTH(N)) x, y; \
@@ -64,6 +73,11 @@ typedef uint8_t goosimd_v32 __attribute__((vector_size(32)));
 #define GOOSIMD_EQ(N, out, input, byte) do { \
     uint8_t x[N]; memcpy(x, &(input), N); \
     for (int i = 0; i < N; ++i) x[i] = x[i] == byte ? 255 : 0; \
+    memcpy(&(out), x, N); \
+} while (0)
+#define GOOSIMD_EQV(N, out, a, b) do { \
+    uint8_t x[N], y[N]; memcpy(x, &(a), N); memcpy(y, &(b), N); \
+    for (int i = 0; i < N; ++i) x[i] = x[i] == y[i] ? 255 : 0; \
     memcpy(&(out), x, N); \
 } while (0)
 #define GOOSIMD_BINARY(N, out, a, b, op) do { \
@@ -120,6 +134,7 @@ GOOSIMD_INLINE uint32_t goosimd_extract32(const void *p) {
 #define GOOSIMD_ADAPTERS(N, V, M) \
 GOOSIMD_INLINE V goosimd_load##N(sl_u8 s) { V v; GOOSIMD_LOAD(N, v, s.data); return v; } \
 GOOSIMD_INLINE M goosimd_eq##N(V v, uint8_t byte) { M m; GOOSIMD_EQ(N, m, v, byte); return m; } \
+GOOSIMD_INLINE M goosimd_eqv##N(V a, V b) { M m; GOOSIMD_EQV(N, m, a, b); return m; } \
 GOOSIMD_INLINE M goosimd_and##N(M a, M b) { M m; GOOSIMD_BINARY(N, m, a, b, &); return m; } \
 GOOSIMD_INLINE M goosimd_or##N(M a, M b) { M m; GOOSIMD_BINARY(N, m, a, b, |); return m; } \
 GOOSIMD_INLINE M goosimd_not##N(M a) { M m; GOOSIMD_NOT(N, m, a); return m; } \
@@ -143,6 +158,7 @@ GOOSIMD_INLINE uint64_t goosimd_load_u64(sl_u8 s) {
 #undef GOOSIMD_NOT
 #undef GOOSIMD_BINARY
 #undef GOOSIMD_EQ
+#undef GOOSIMD_EQV
 #undef GOOSIMD_LOAD
 #undef GOOSIMD_BROADCAST
 #undef GOOSIMD_TYPE

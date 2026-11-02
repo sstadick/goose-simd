@@ -4,6 +4,7 @@ goosimd::Mask
 goosimd::U8x16
 goosimd::U8x32
 goosimd::load
+goosimd::splat
 goosimd::eq
 goosimd::bit_and
 goosimd::bit_or

@@ -55,7 +55,9 @@ assert(v.eq('?').first() == -1);
 | Operation | Result |
 | --- | --- |
 | `load<V>(bytes)` | Read the first 16 or 32 bytes; input must be at least that long. Alignment is not required. |
+| `splat<V>(byte)` | Fill all lanes with the same byte. |
 | `v.eq(byte)` | A mask marking lanes equal to the byte. |
+| `v.eq(w)` | A mask marking equal lanes in two vectors of the same width. |
 | `m.bit_and(n)` | Lanes matched by both masks. |
 | `m.bit_or(n)` | Lanes matched by either mask. |
 | `m.bit_not()` | All lanes not matched by the mask. |
