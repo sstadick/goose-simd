@@ -1,2 +1,2 @@
 import std;
-import goosimd from "..";
+import simd_bytes from "..";

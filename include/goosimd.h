@@ -140,8 +140,8 @@ GOOSIMD_INLINE M goosimd_or##N(M a, M b) { M m; GOOSIMD_BINARY(N, m, a, b, |); r
 GOOSIMD_INLINE M goosimd_not##N(M a) { M m; GOOSIMD_NOT(N, m, a); return m; } \
 GOOSIMD_INLINE uint32_t goosimd_bits##N(M m) { uint32_t r = 0; GOOSIMD_BITS(N, m, r); return r; }
 
-GOOSIMD_ADAPTERS(16, goosimd_Vec_g7_a16_u8, goosimd_Mask_g7_a16_u8)
-GOOSIMD_ADAPTERS(32, goosimd_Vec_g7_a32_u8, goosimd_Mask_g7_a32_u8)
+GOOSIMD_ADAPTERS(16, simd_bytes_Vec_g10_a16_u8, simd_bytes_Mask_g10_a16_u8)
+GOOSIMD_ADAPTERS(32, simd_bytes_Vec_g10_a32_u8, simd_bytes_Mask_g10_a32_u8)
 
 GOOSIMD_INLINE uint16_t goosimd_load_u16(sl_u8 s) {
     uint16_t r; memcpy(&r, s.data, sizeof r); return r;

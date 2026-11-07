@@ -1,5 +1,5 @@
 import std;
-import goosimd from "..";
+import simd_bytes from "..";
 
 fn check_search(s: const u8[:], a: u8, b: u8) {
     var byte_at = -1;
@@ -10,11 +10,11 @@ fn check_search(s: const u8[:], a: u8, b: u8) {
             if pair_at < 0 && i + 1 < s.len && s[i + 1] == b { pair_at = i; }
         }
     }
-    assert(goosimd::find_byte(s, a) == byte_at);
-    assert(goosimd::find_pair(s, a, b) == pair_at);
+    assert(simd_bytes::find_byte(s, a) == byte_at);
+    assert(simd_bytes::find_pair(s, a, b) == pair_at);
 }
 
-fn check_mask<L>(m: goosimd::Mask<L>, expected: u32, width: i64) {
+fn check_mask<L>(m: simd_bytes::Mask<L>, expected: u32, width: i64) {
     var first = -1;
     var last = -1;
     for i in width {
@@ -33,21 +33,21 @@ fn main() {
     // Every byte value, lane and alignment, including bit 31 of the mask.
     for offset in 32 {
         for value in 256 {
-            let broadcast = goosimd::splat<goosimd::U8x32>(value as u8);
-            let broadcast16 = goosimd::splat<goosimd::U8x16>(value as u8);
+            let broadcast = simd_bytes::splat<simd_bytes::U8x32>(value as u8);
+            let broadcast16 = simd_bytes::splat<simd_bytes::U8x16>(value as u8);
             check_mask(broadcast.eq(value as u8), 0xFFFFFFFF, 32);
             check_mask(broadcast16.eq(value as u8), 0xFFFF, 16);
             for lane in 32 {
                 for i in 32 { data[offset + i] = (value as u8) ^ 1; }
                 data[offset + lane] = value as u8;
-                let eq = goosimd::load<goosimd::U8x32>(data[offset..offset + 32]).eq(value as u8);
+                let eq = simd_bytes::load<simd_bytes::U8x32>(data[offset..offset + 32]).eq(value as u8);
                 check_mask(eq, (1 as u32) << lane, 32);
-                check_mask(goosimd::load<goosimd::U8x32>(data[offset..offset + 32]).eq(broadcast),
+                check_mask(simd_bytes::load<simd_bytes::U8x32>(data[offset..offset + 32]).eq(broadcast),
                     (1 as u32) << lane, 32);
-                let eq16 = goosimd::load<goosimd::U8x16>(data[offset..offset + 16]).eq(value as u8);
+                let eq16 = simd_bytes::load<simd_bytes::U8x16>(data[offset..offset + 16]).eq(value as u8);
                 let mask16: u32 = if lane < 16 { (1 as u32) << lane } else { 0 };
                 check_mask(eq16, mask16, 16);
-                check_mask(goosimd::load<goosimd::U8x16>(data[offset..offset + 16]).eq(broadcast16),
+                check_mask(simd_bytes::load<simd_bytes::U8x16>(data[offset..offset + 16]).eq(broadcast16),
                     mask16, 16);
             }
         }
@@ -68,9 +68,9 @@ fn main() {
             if data[i] == 1 { left |= (1 as u32) << i; }
             if other[i] == 1 { right |= (1 as u32) << i; }
         }
-        let x = goosimd::load<goosimd::U8x32>(data).eq(1);
-        let y = goosimd::load<goosimd::U8x32>(other).eq(1);
-        let equal = goosimd::load<goosimd::U8x32>(data).eq(goosimd::load<goosimd::U8x32>(other));
+        let x = simd_bytes::load<simd_bytes::U8x32>(data).eq(1);
+        let y = simd_bytes::load<simd_bytes::U8x32>(other).eq(1);
+        let equal = simd_bytes::load<simd_bytes::U8x32>(data).eq(simd_bytes::load<simd_bytes::U8x32>(other));
         check_mask(equal, ~(left ^ right), 32);
         check_mask(equal.bit_not(), left ^ right, 32);
         check_mask(x.bit_and(y), left & right, 32);
@@ -78,9 +78,9 @@ fn main() {
         check_mask(x.bit_not(), ~left, 32);
         check_mask(x.bit_or(x.bit_not()), 0xFFFFFFFF, 32);
         check_mask(x.bit_and(x.bit_not()), 0, 32);
-        let x16 = goosimd::load<goosimd::U8x16>(data).eq(1);
-        let y16 = goosimd::load<goosimd::U8x16>(other).eq(1);
-        let equal16 = goosimd::load<goosimd::U8x16>(data).eq(goosimd::load<goosimd::U8x16>(other));
+        let x16 = simd_bytes::load<simd_bytes::U8x16>(data).eq(1);
+        let y16 = simd_bytes::load<simd_bytes::U8x16>(other).eq(1);
+        let equal16 = simd_bytes::load<simd_bytes::U8x16>(data).eq(simd_bytes::load<simd_bytes::U8x16>(other));
         check_mask(equal16, ~(left ^ right) & 0xFFFF, 16);
         check_mask(equal16.bit_not(), (left ^ right) & 0xFFFF, 16);
         check_mask(x16.bit_and(y16), (left & right) & 0xFFFF, 16);
@@ -95,14 +95,14 @@ fn main() {
         for value in [0, 1, 128, 255] {
             for i in 160 { data[i] = 7; }
             for i in 8 { data[offset + i] = value as u8; }
-            assert(goosimd::load_u16(data[offset..offset + 2]) == (value as u16) * 0x0101);
-            assert(goosimd::load_u32(data[offset..offset + 4]) == (value as u32) * 0x01010101);
-            assert(goosimd::load_u64(data[offset..offset + 8]) == (value as u64) * 0x0101010101010101);
+            assert(simd_bytes::load_u16(data[offset..offset + 2]) == (value as u16) * 0x0101);
+            assert(simd_bytes::load_u32(data[offset..offset + 4]) == (value as u32) * 0x01010101);
+            assert(simd_bytes::load_u64(data[offset..offset + 8]) == (value as u64) * 0x0101010101010101);
         }
         for i in 8 { data[offset + i] = (i + 1) as u8; }
-        let a = goosimd::load_u16(data[offset..offset + 2]);
-        let b = goosimd::load_u32(data[offset..offset + 4]);
-        let c = goosimd::load_u64(data[offset..offset + 8]);
+        let a = simd_bytes::load_u16(data[offset..offset + 2]);
+        let b = simd_bytes::load_u32(data[offset..offset + 4]);
+        let c = simd_bytes::load_u64(data[offset..offset + 8]);
         assert(a == 0x0201 || a == 0x0102);
         assert(b == 0x04030201 || b == 0x01020304);
         assert(c == 0x0807060504030201 || c == 0x0102030405060708);
@@ -126,8 +126,8 @@ fn main() {
         }
     }
     for i in 160 { data[i] = 255; }
-    check_mask(goosimd::load<goosimd::U8x32>(data).eq(255), 0xFFFFFFFF, 32);
+    check_mask(simd_bytes::load<simd_bytes::U8x32>(data).eq(255), 0xFFFFFFFF, 32);
     check_search(data, 255, 255);
     check_search(data, 0, 0);
-    print("goosimd checks passed");
+    print("goose-simd checks passed");
 }
