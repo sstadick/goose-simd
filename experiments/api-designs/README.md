@@ -46,7 +46,7 @@ GCC, and Python 3 installed:
 
 ```sh
 python3 experiments/api-designs/run.py --goose /path/to/goose \
-  --out /tmp/goosimd-designs --bench
+  --out /tmp/goose-simd-designs --bench
 ```
 
 The runner writes timing samples, compiler logs, assembly, and runtime

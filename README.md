@@ -1,9 +1,9 @@
-# goosimd
+# goose-simd
 
 Compare 16 or 32 bytes at a time in [Goose](https://github.com/aardappel/goose),
 combine the results as masks, and find matching positions.
 
-**[API reference and examples](API.md)** · [Releases](https://github.com/sstadick/goosimd/releases)
+**[API reference and examples](API.md)** · [Releases](https://github.com/sstadick/goose-simd/releases)
 
 **This is an experimental placeholder and will be replaced with a different
 implementation.** Do not rely on stable types, layout, or API compatibility.
@@ -13,11 +13,11 @@ implementation.** Do not rely on stable types, layout, or API compatibility.
 Save this as `main.goose`. Goose downloads the package automatically:
 
 ```goose
-import goosimd from "github.com/sstadick/goosimd@main";
+import simd_bytes from "github.com/sstadick/goose-simd@main";
 
 fn main() {
     let bytes = "abcdefghijklmnopqrstuvwxyz012345";
-    let v = goosimd::load<goosimd::U8x32>(bytes);
+    let v = simd_bytes::load<simd_bytes::U8x32>(bytes);
     let matches = v.eq('a').bit_or(v.eq('z'));
     print(matches.first());    // 0
     print(matches.last());     // 25
@@ -43,7 +43,7 @@ Each byte position is called a *lane*.
 Inside `main()`, with the import above:
 
 ```goose
-let v = goosimd::load<goosimd::U8x16>("red,green;blue___");
+let v = simd_bytes::load<simd_bytes::U8x16>("red,green;blue___");
 let separators = v.eq(',').bit_or(v.eq(';'));
 assert(separators.first() == 3);
 assert(separators.last() == 9);
@@ -77,13 +77,13 @@ they are not portable serialization functions.
 The package also provides simple searches that handle short inputs and tails:
 
 ```goose
-assert(goosimd::find_byte("hello", 'l') == 2);
-assert(goosimd::find_pair("hello", 'l', 'o') == 3);
-assert(goosimd::find_byte("hello", '?') == -1);
+assert(simd_bytes::find_byte("hello", 'l') == 2);
+assert(simd_bytes::find_pair("hello", 'l', 'o') == 3);
+assert(simd_bytes::find_byte("hello", '?') == -1);
 ```
 
 For substring search, splitting, and other byte-string operations, use
-[goostr](https://github.com/sstadick/goostr).
+[goose-bstr](https://github.com/sstadick/goose-bstr).
 
 ## Choose a compiler and target
 
@@ -105,12 +105,12 @@ This complete example finds either separator, including in a short input or
 the tail after the last full vector:
 
 ```goose
-import goosimd from "github.com/sstadick/goosimd@main";
+import simd_bytes from "github.com/sstadick/goose-simd@main";
 
 simd fn find_separator(bytes: const u8[:]) -> i64 {
     var pos = 0;
     while pos <= bytes.len - 32 {
-        let v = goosimd::load<goosimd::U8x32>(bytes[pos..]);
+        let v = simd_bytes::load<simd_bytes::U8x32>(bytes[pos..]);
         let at = v.eq(',').bit_or(v.eq(';')).first();
         if at >= 0 { return pos + at; }
         pos += 32;
@@ -152,8 +152,8 @@ python3 test/run.py --goose /path/to/goose --cc gcc --avx2
 ```
 
 Edit API documentation in the source comments, not `API.md`. With
-[goosdoc v0.2.0](https://github.com/sstadick/goosdoc/releases/tag/v0.2.0)
-checked out at `../goosdoc`, run:
+[goose-doc](https://github.com/sstadick/goose-doc/commit/f7292c9ee395596fa39eb709f90dc71ef124a0eb)
+checked out at `../goose-doc`, run:
 
 ```sh
 scripts/docs.sh
@@ -163,10 +163,31 @@ scripts/doctest.sh --cc gcc
 scripts/doctest.sh --cc clang
 ```
 
-Set `GOOSDOC=/path/to/goosdoc/main.goose` for another location. Every API
+Set `GOOSE_DOC=/path/to/goose-doc/main.goose` for another location. Every API
 declaration needs an executable example; see the
-[example conventions](https://github.com/sstadick/goosdoc#executable-examples).
+[example conventions](https://github.com/sstadick/goose-doc#executable-examples).
 CI checks the reference and runs examples and tests before publishing releases.
+
+## Migration from goosimd
+
+The repository is now [sstadick/goose-simd](https://github.com/sstadick/goose-simd).
+Replace `import goosimd from "github.com/sstadick/goosimd@<ref>";` with
+`import simd_bytes from "github.com/sstadick/goose-simd@<migration-or-later-ref>";`
+and change `goosimd::` to `simd_bytes::`. The entry file is `simd_bytes.goose`.
+Function and type names are unchanged; owned-struct UFCS remains supported.
+Old release tags retain the old entry file and namespace, so do not use the
+new import identifier with a pre-migration revision. No compatibility wrapper
+is provided.
+
+The namespace is `simd_bytes`, not `simd` (a reserved Goose keyword).
+
+Dependencies below are exact coordinated migration commits. Until they are
+merged/published, remote builds require those commits to be made available
+(or local package source overrides). Existing release tags do not contain
+the new namespaces. The documentation scripts use `GOOSE_DOC`, defaulting
+to `../goose-doc/main.goose`.
+
+- `goose-doc`: `f7292c9ee395596fa39eb709f90dc71ef124a0eb`
 
 ## License
 

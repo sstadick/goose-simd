@@ -23,7 +23,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     source = root / "test" / "check.goose"
     suffix = ".exe" if os.name == "nt" else ""
-    with tempfile.TemporaryDirectory(prefix="goosimd-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="goose-simd-") as tmp:
         out = Path(tmp)
         env = dict(os.environ, GOOSE_HOME=str(out / "home"))
 
@@ -34,15 +34,22 @@ def main():
                 raise RuntimeError(f"{command}\n{result.stdout}{result.stderr}")
 
         for level in (0, 2):
-            run([goose, "run", f"-O{level}", source], "goosimd checks passed")
+            run([goose, "run", f"-O{level}", source], "goose-simd checks passed")
             print(f"PASS TinyCC -O{level}", flush=True)
         native = out / ("native" + suffix)
         run([goose, "build", "--cc", cc, "-o", native, source])
-        run([native], "goosimd checks passed")
+        run([native], "goose-simd checks passed")
         print("PASS ordinary package build", flush=True)
 
         cfile = out / "check.c"
         run([goose, "--standalone", "-o", cfile, source])
+        generated = cfile.read_text()
+        # Native adapters use the compiler's namespace-length mangling.
+        for kind in ("Vec", "Mask"):
+            for width in (16, 32):
+                assert f"simd_bytes_{kind}_g10_a{width}_u8" in generated
+        assert "goosimd_Vec_g7_" not in generated
+        assert "goosimd_Mask_g7_" not in generated
         variants = [("native", []), ("baseline", ["-DGS_SIMD=0"]),
                     ("scalar", ["-DGOOSIMD_SCALAR"])]
         if args.avx2:
@@ -53,7 +60,7 @@ def main():
         for name, flags in variants:
             binary = out / (name + suffix)
             run([cc, "-O2", *flags, cfile, "-o", binary, *libs])
-            run([binary], "goosimd checks passed")
+            run([binary], "goose-simd checks passed")
             print(f"PASS emitted C ({name})", flush=True)
 
 
