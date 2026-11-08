@@ -87,6 +87,10 @@ For substring search, splitting, and other byte-string operations, use
 
 ## Choose a compiler and target
 
+CI pins [Goose `a12523f23e54`](https://github.com/aardappel/goose/commit/a12523f23e545a6af350562804a0c8b201864946)
+(`goose v2026.4-11-ga12523f2`, runtime `d521138194f1`) for the TinyCC,
+GCC, and Clang checks below.
+
 Vector width and CPU instruction set are separate choices: a 32-byte vector
 does not require an AVX2 CPU.
 
