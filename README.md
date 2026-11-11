@@ -87,8 +87,8 @@ For substring search, splitting, and other byte-string operations, use
 
 ## Choose a compiler and target
 
-CI pins [Goose `f4637bfb342f`](https://github.com/aardappel/goose/commit/f4637bfb342fb70d42bea0474eab9e62a3c99d68)
-(`goose v2026.4-17-gf4637bfb`, runtime `d521138194f1`) for the TinyCC,
+CI pins [Goose `d5ae5bbda990`](https://github.com/aardappel/goose/commit/d5ae5bbda990923fa4129f969c7f853c20d4d1e6)
+(`goose v2026.4-20-gd5ae5bbd`, runtime `d521138194f1`) for the TinyCC,
 GCC, and Clang checks below.
 
 Vector width and CPU instruction set are separate choices: a 32-byte vector
