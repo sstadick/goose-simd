@@ -110,8 +110,11 @@ kernels reuse those operations without Goose ABI types.
 
 Local checks passed on Linux AVX2 and scalar/TinyCC. A Clang AArch64 build
 passed the same tests under QEMU, including all 65,536 expansion masks.
-**AVX-512 is compile-checked only; native ARM and AVX-512 performance are not
-measured.** `GOOSIMD_SCALAR` selects explicit scalar fallback implementations;
+The [v0.3.0 implementation CI run](https://github.com/sstadick/goose-simd/actions/runs/43238690415)
+also passed on real **AVX-512 and ARM NEON** runners, including the shared
+SIMD tests and all 34 documentation examples with TinyCC and Clang.
+**Native ARM and AVX-512 performance is not measured.**
+`GOOSIMD_SCALAR` selects explicit scalar fallback implementations;
 `GS_SIMD=0` only disables Goose's function multiversioning, not the nibble
 kernel's independent runtime dispatch.
 
