@@ -21,12 +21,27 @@
 - [`simd_bytes::load_u64`](#api-17)
 - [`simd_bytes::find_byte`](#api-18)
 - [`simd_bytes::find_pair`](#api-19)
+- [`simd_bytes::decode_nibbles`](#api-20)
+- [`simd_int::U16x8`](#api-21)
+- [`simd_int::load_low_u16`](#api-22)
+- [`simd_int::splat`](#api-23)
+- [`simd_int::add`](#api-24)
+- [`simd_int::prefix_sum`](#api-25)
+- [`simd_int::broadcast_last`](#api-26)
+- [`simd_int::le`](#api-27)
+- [`simd_int::to_bits`](#api-28)
+- [`simd_int::select`](#api-29)
+- [`simd_int::min`](#api-30)
+- [`simd_int::max`](#api-31)
+- [`simd_int::reduce_min`](#api-32)
+- [`simd_int::reduce_max`](#api-33)
+- [`simd_int::expand_u32`](#api-34)
 
 <a id="api-1"></a>
 
 ## `simd_bytes::Vec`
 
-[source](simd_bytes.goose#L12-L12)
+[source](simd_bytes.goose#L13-L13)
 
 ```goose
 struct Vec<Lanes> { lanes: Lanes }
@@ -44,7 +59,7 @@ assert(v.eq('p').first() == 15);
 
 ## `simd_bytes::Mask`
 
-[source](simd_bytes.goose#L19-L19)
+[source](simd_bytes.goose#L20-L20)
 
 ```goose
 struct Mask<Lanes> { lanes: Lanes }
@@ -61,7 +76,7 @@ assert(mask.to_bits() == 2);
 
 ## `simd_bytes::U8x16`
 
-[source](simd_bytes.goose#L26-L26)
+[source](simd_bytes.goose#L27-L27)
 
 ```goose
 type U8x16 = Vec<u8[16]>;
@@ -78,7 +93,7 @@ assert(v.eq('a').first() == 0);
 
 ## `simd_bytes::U8x32`
 
-[source](simd_bytes.goose#L33-L33)
+[source](simd_bytes.goose#L34-L34)
 
 ```goose
 type U8x32 = Vec<u8[32]>;
@@ -95,7 +110,7 @@ assert(v.eq('5').last() == 31);
 
 ## `simd_bytes::load`
 
-[source](simd_bytes.goose#L68-L68)
+[source](simd_bytes.goose#L69-L69)
 
 ```goose
 inline fn load<V>(s: const u8[:]) -> V
@@ -114,7 +129,7 @@ assert(v.eq('p').first() == 15); // The trailing ! is not loaded.
 
 ## `simd_bytes::splat`
 
-[source](simd_bytes.goose#L78-L78)
+[source](simd_bytes.goose#L79-L79)
 
 ```goose
 inline fn splat<V>(byte: u8) -> V
@@ -131,7 +146,7 @@ assert(v.eq(255).to_bits() == 0xFFFFFFFF);
 
 ## `simd_bytes::eq`
 
-[source](simd_bytes.goose#L87-L87)
+[source](simd_bytes.goose#L88-L88)
 
 ```goose
 inline fn eq<L>(v: Vec<L>, x: u8) -> Mask<L>
@@ -149,7 +164,7 @@ assert(v.eq('z').first() == -1);
 
 ## `simd_bytes::eq`
 
-[source](simd_bytes.goose#L96-L96)
+[source](simd_bytes.goose#L97-L97)
 
 ```goose
 inline fn eq<L>(a: Vec<L>, b: Vec<L>) -> Mask<L>
@@ -168,7 +183,7 @@ assert(a.eq(b).to_bits() == 0x8005);
 
 ## `simd_bytes::bit_and`
 
-[source](simd_bytes.goose#L104-L104)
+[source](simd_bytes.goose#L105-L105)
 
 ```goose
 inline fn bit_and<L>(a: Mask<L>, b: Mask<L>) -> Mask<L>
@@ -186,7 +201,7 @@ assert(a.bit_and(b).to_bits() == 4); // Only lane 2.
 
 ## `simd_bytes::bit_or`
 
-[source](simd_bytes.goose#L111-L111)
+[source](simd_bytes.goose#L112-L112)
 
 ```goose
 inline fn bit_or<L>(a: Mask<L>, b: Mask<L>) -> Mask<L>
@@ -203,7 +218,7 @@ assert(v.eq('a').bit_or(v.eq('d')).to_bits() == 9);
 
 ## `simd_bytes::bit_not`
 
-[source](simd_bytes.goose#L119-L119)
+[source](simd_bytes.goose#L120-L120)
 
 ```goose
 inline fn bit_not<L>(m: Mask<L>) -> Mask<L>
@@ -221,7 +236,7 @@ assert(mask.bit_not().to_bits() == 65534); // Only the low 16 bits.
 
 ## `simd_bytes::to_bits`
 
-[source](simd_bytes.goose#L127-L127)
+[source](simd_bytes.goose#L128-L128)
 
 ```goose
 inline fn to_bits<L>(m: Mask<L>) -> u32
@@ -239,7 +254,7 @@ assert(v.eq('5').to_bits() == 0x80000000);
 
 ## `simd_bytes::first`
 
-[source](simd_bytes.goose#L135-L138)
+[source](simd_bytes.goose#L136-L139)
 
 ```goose
 inline fn first<L>(m: Mask<L>) -> i64
@@ -257,7 +272,7 @@ assert(v.eq('z').first() == -1);
 
 ## `simd_bytes::last`
 
-[source](simd_bytes.goose#L146-L149)
+[source](simd_bytes.goose#L147-L150)
 
 ```goose
 inline fn last<L>(m: Mask<L>) -> i64
@@ -275,7 +290,7 @@ assert(v.eq('z').last() == -1);
 
 ## `simd_bytes::load_u16`
 
-[source](simd_bytes.goose#L161-L164)
+[source](simd_bytes.goose#L162-L165)
 
 ```goose
 inline fn load_u16(s: const u8[:]) -> u16
@@ -292,7 +307,7 @@ assert(simd_bytes::load_u16("aa!") == 0x6161); // Same value on either endiannes
 
 ## `simd_bytes::load_u32`
 
-[source](simd_bytes.goose#L171-L174)
+[source](simd_bytes.goose#L172-L175)
 
 ```goose
 inline fn load_u32(s: const u8[:]) -> u32
@@ -309,7 +324,7 @@ assert(simd_bytes::load_u32("aaaa!") == 0x61616161);
 
 ## `simd_bytes::load_u64`
 
-[source](simd_bytes.goose#L181-L184)
+[source](simd_bytes.goose#L182-L185)
 
 ```goose
 inline fn load_u64(s: const u8[:]) -> u64
@@ -326,7 +341,7 @@ assert(simd_bytes::load_u64("aaaaaaaa!") == 0x6161616161616161);
 
 ## `simd_bytes::find_byte`
 
-[source](simd_bytes.goose#L195-L204)
+[source](simd_bytes.goose#L196-L205)
 
 ```goose
 simd fn find_byte(s: const u8[:], byte: u8) -> i64
@@ -346,7 +361,7 @@ assert(simd_bytes::find_byte("", 'g') == -1);
 
 ## `simd_bytes::find_pair`
 
-[source](simd_bytes.goose#L214-L227)
+[source](simd_bytes.goose#L215-L228)
 
 ```goose
 simd fn find_pair(s: const u8[:], a: u8, b: u8) -> i64
@@ -359,4 +374,266 @@ dispatch as find_byte.
 ```goose
 assert(simd_bytes::find_pair("goose", 'o', 's') == 2);
 assert(simd_bytes::find_pair("goose", 'g', 's') == -1);
+```
+
+<a id="api-20"></a>
+
+## `simd_bytes::decode_nibbles`
+
+[source](simd_bytes.goose#L243-L247)
+
+```goose
+fn decode_nibbles(input: const u8[:], output: u8[:], table: const u8[:], low_first: bool) -> bool
+```
+
+Expand packed 4-bit indices through a 16-byte table into caller-owned output.
+Returns false without writing when input or table is too short. The output
+length determines how many nibbles to decode, including an odd last nibble.
+Input, table and output must not overlap. low_first selects CRAM ordering;
+false selects BAM ordering. Dispatches once per slice, with scalar tails.
+
+```goose
+let packed: u8[2] = [0x21, 0x43];
+var out: u8[3] = [0; 3];
+assert(simd_bytes::decode_nibbles(packed, out, "ABCDEFGHIJKLMNOP", true));
+assert(out[0] == 'B' && out[1] == 'C' && out[2] == 'D');
+```
+
+<a id="api-21"></a>
+
+## `simd_int::U16x8`
+
+[source](simd_int.goose#L12-L12)
+
+```goose
+struct U16x8 { lanes: u16[8] }
+```
+
+Eight unsigned 16-bit lanes. Arithmetic wraps modulo 65536; masks use
+zero/65535 lanes. Width does not imply a required CPU instruction set.
+
+```goose
+let v = simd_int::splat(7);
+assert(v.reduce_max() == 7);
+```
+
+<a id="api-22"></a>
+
+## `simd_int::load_low_u16`
+
+[source](simd_int.goose#L22-L22)
+
+```goose
+inline fn load_low_u16(input: const u32[:]) -> U16x8
+```
+
+Load the low 16 bits of eight u32s, discarding their upper halves.
+Asserts input.len >= 8; reads exactly eight elements.
+
+```goose
+let input: u32[8] = [65537, 2, 3, 4, 5, 6, 7, 8];
+assert(simd_int::load_low_u16(input).lanes[0] == 1);
+```
+
+<a id="api-23"></a>
+
+## `simd_int::splat`
+
+[source](simd_int.goose#L29-L29)
+
+```goose
+extern fn splat(value: u16) -> U16x8 = "goosimd_int_splat";
+```
+
+Fill all eight lanes with value.
+
+```goose
+assert(simd_int::splat(13).lanes[7] == 13);
+```
+
+<a id="api-24"></a>
+
+## `simd_int::add`
+
+[source](simd_int.goose#L35-L35)
+
+```goose
+extern fn add(a: U16x8, b: U16x8) -> U16x8 = "goosimd_int_add";
+```
+
+Add corresponding lanes modulo 65536.
+
+```goose
+assert(simd_int::splat(65535).add(simd_int::splat(2)).lanes[0] == 1);
+```
+
+<a id="api-25"></a>
+
+## `simd_int::prefix_sum`
+
+[source](simd_int.goose#L42-L42)
+
+```goose
+extern fn prefix_sum(v: U16x8) -> U16x8 = "goosimd_int_prefix";
+```
+
+Inclusive prefix sums, wrapping modulo 65536 in each lane.
+
+```goose
+let v = simd_int::U16x8 { lanes: [2, 1, 4, 3, 8, 5, 6, 7] }.prefix_sum();
+assert(v.lanes[3] == 10 && v.lanes[7] == 36);
+```
+
+<a id="api-26"></a>
+
+## `simd_int::broadcast_last`
+
+[source](simd_int.goose#L48-L48)
+
+```goose
+extern fn broadcast_last(v: U16x8) -> U16x8 = "goosimd_int_last";
+```
+
+Broadcast lane 7 to all lanes.
+
+```goose
+assert(simd_int::splat(3).prefix_sum().broadcast_last().lanes[0] == 24);
+```
+
+<a id="api-27"></a>
+
+## `simd_int::le`
+
+[source](simd_int.goose#L54-L54)
+
+```goose
+extern fn le(a: U16x8, b: U16x8) -> U16x8 = "goosimd_int_le";
+```
+
+Unsigned <= comparison. Matched lanes are 65535; others are zero.
+
+```goose
+assert(simd_int::splat(40000).le(simd_int::splat(32767)).to_bits() == 0);
+```
+
+<a id="api-28"></a>
+
+## `simd_int::to_bits`
+
+[source](simd_int.goose#L61-L61)
+
+```goose
+extern fn to_bits(mask: U16x8) -> u32 = "goosimd_int_bits";
+```
+
+Extract one bit per mask lane, lane 0 first. Input must contain only
+zero/65535 lanes, such as the result of le(). Upper 24 bits are zero.
+
+```goose
+assert(simd_int::splat(2).prefix_sum().le(simd_int::splat(6)).to_bits() == 7);
+```
+
+<a id="api-29"></a>
+
+## `simd_int::select`
+
+[source](simd_int.goose#L70-L70)
+
+```goose
+extern fn select(mask: U16x8, yes: U16x8, no: U16x8) -> U16x8 = "goosimd_int_select";
+```
+
+Select yes on matched mask lanes, no otherwise. Mask lanes must be
+zero/65535, such as the result of le().
+
+```goose
+let mask = simd_int::splat(1).prefix_sum().le(simd_int::splat(4));
+let v = mask.select(simd_int::splat(19), simd_int::splat(23));
+assert(v.lanes[3] == 19 && v.lanes[4] == 23);
+```
+
+<a id="api-30"></a>
+
+## `simd_int::min`
+
+[source](simd_int.goose#L76-L76)
+
+```goose
+extern fn min(a: U16x8, b: U16x8) -> U16x8 = "goosimd_int_min";
+```
+
+Per-lane unsigned minimum.
+
+```goose
+assert(simd_int::splat(65535).min(simd_int::splat(7)).lanes[0] == 7);
+```
+
+<a id="api-31"></a>
+
+## `simd_int::max`
+
+[source](simd_int.goose#L82-L82)
+
+```goose
+extern fn max(a: U16x8, b: U16x8) -> U16x8 = "goosimd_int_max";
+```
+
+Per-lane unsigned maximum.
+
+```goose
+assert(simd_int::splat(65535).max(simd_int::splat(7)).lanes[7] == 65535);
+```
+
+<a id="api-32"></a>
+
+## `simd_int::reduce_min`
+
+[source](simd_int.goose#L88-L88)
+
+```goose
+extern fn reduce_min(v: U16x8) -> u16 = "goosimd_int_minimum";
+```
+
+Smallest unsigned lane value.
+
+```goose
+assert(simd_int::splat(3).prefix_sum().reduce_min() == 3);
+```
+
+<a id="api-33"></a>
+
+## `simd_int::reduce_max`
+
+[source](simd_int.goose#L94-L94)
+
+```goose
+extern fn reduce_max(v: U16x8) -> u16 = "goosimd_int_maximum";
+```
+
+Largest unsigned lane value.
+
+```goose
+assert(simd_int::splat(3).prefix_sum().reduce_max() == 24);
+```
+
+<a id="api-34"></a>
+
+## `simd_int::expand_u32`
+
+[source](simd_int.goose#L108-L113)
+
+```goose
+fn expand_u32(input: const u32[:], output: u32[:], mask: u16) -> bool
+```
+
+Expand consecutive input values into the set lanes of a 16-bit mask;
+unset lanes become zero. Writes exactly 16 output elements. Returns false
+without writing if output.len < 16 or input.len < popcount(mask).
+Input/output must not overlap; neither requires alignment or extra padding.
+
+```goose
+let input: u32[3] = [90000, 17, 4294967295];
+var out: u32[16] = [99; 16];
+assert(simd_int::expand_u32(input, out, 0x8005));
+assert(out[0] == 90000 && out[1] == 0 && out[2] == 17 && out[15] == 4294967295);
 ```

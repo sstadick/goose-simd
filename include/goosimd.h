@@ -5,6 +5,11 @@
 // are compiler-specific, not a stable C ABI. memcpy permits packed values.
 #include <stdint.h>
 #include <string.h>
+#include "goosimd_nibbles.h"
+
+static inline void goosimd_nibbles(sl_u8 input, sl_u8 output, sl_u8 table, uint8_t low_first) {
+    goosimd_decode_nibbles(input.data, output.data, (size_t)output.len, table.data, low_first);
+}
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__TINYC__) && !defined(GOOSIMD_SCALAR)
 #define GOOSIMD_INLINE static inline __attribute__((always_inline))

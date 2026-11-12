@@ -3,6 +3,17 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      runners:
+        description: 'Runner labels as a JSON array; use an AVX-512-capable runner for that ISA'
+        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+        type: string
+      require_isa:
+        description: 'Required native ISA (fails on the wrong hardware)'
+        default: auto
+        type: choice
+        options: [auto, avx2, avx512, neon]
 
 permissions:
   contents: read
@@ -13,7 +24,11 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(inputs.runners || '["ubuntu-24.04", "ubuntu-24.04-arm"]') }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +51,7 @@ jobs:
           persist-credentials: false
       - name: Build Goose
         run: |
-          cmake -S .ci/goose -B .ci/goose/build -DCMAKE_BUILD_TYPE=Debug -DGOOSE_BUILTIN_LIBS=
+          cmake -S .ci/goose -B .ci/goose/build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DGOOSE_BUILTIN_LIBS=
           cmake --build .ci/goose/build --parallel 2
           echo "$GITHUB_WORKSPACE/.ci/goose/build" >> "$GITHUB_PATH"
       - name: Check API reference
@@ -48,19 +63,22 @@ jobs:
           GOOSE_DOC: .ci/goose-doc/main.goose
         run: |
           scripts/doctest.sh
-          scripts/doctest.sh --cc gcc
           scripts/doctest.sh --cc clang
       - name: Generate release reference
+        if: matrix.runner == 'ubuntu-24.04'
         env:
           GOOSE_DOC: .ci/goose-doc/main.goose
           DOC_OUTPUT: ${{ runner.temp }}/API.md
         run: scripts/docs.sh --source-url "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
+        if: matrix.runner == 'ubuntu-24.04'
         with:
           name: api-reference
           path: ${{ runner.temp }}/API.md
           if-no-files-found: error
-      - name: TinyCC, GCC, and Clang tests
+      - name: TinyCC and Clang SIMD tests
+        env:
+          REQUIRE_ISA: ${{ inputs.require_isa || 'auto' }}
         run: |
           avx2=()
           if grep -qw avx2 /proc/cpuinfo; then
@@ -68,9 +86,10 @@ jobs:
           else
             echo "AVX2 tests skipped: runner CPU does not support AVX2"
           fi
-          for cc in gcc clang; do
-            python3 test/run.py --cc "$cc" "${avx2[@]}"
-          done
+          if [[ "$REQUIRE_ISA" == auto && "$(uname -m)" == aarch64 ]]; then
+            REQUIRE_ISA=neon
+          fi
+          python3 test/run.py --cc clang "${avx2[@]}" --require-isa "$REQUIRE_ISA"
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

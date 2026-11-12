@@ -1,5 +1,81 @@
 import std;
 import simd_bytes from "..";
+import simd_bytes.simd_int;
+
+simd fn check_integer_vectors() {
+    var input: u32[10] = [0; 10];
+    for trial in 257 {
+        for i in 10 { input[i] = (((i + 1) * 397) as u32 << 16) | (((trial * 491 + i * 32749) % 65536) as u32); }
+        let a = simd_int::load_low_u16(input[1..9]);
+        let b = simd_int::load_low_u16(input[2..10]);
+        let sum = a.add(b); let prefix = a.prefix_sum(); let mask = a.le(b);
+        let selected = mask.select(a, b); let lo = a.min(b); let hi = a.max(b);
+        var running: u32 = 0; var bits: u32 = 0;
+        var minimum: u16 = 65535; var maximum: u16 = 0;
+        for i in 8 {
+            let x = input[i + 1] & 65535; let y = input[i + 2] & 65535;
+            running = (running + x) & 65535;
+            assert(a.lanes[i] == x && b.lanes[i] == y);
+            assert(sum.lanes[i] == ((x + y) & 65535) && prefix.lanes[i] == running);
+            assert(lo.lanes[i] == min(x, y) && hi.lanes[i] == max(x, y));
+            assert(selected.lanes[i] == (if x <= y { x } else { y }));
+            if x <= y { bits |= (1 as u32) << i; }
+            minimum = min(minimum, x as u16); maximum = max(maximum, x as u16);
+        }
+        assert(mask.to_bits() == bits);
+        assert(a.reduce_min() == minimum && a.reduce_max() == maximum);
+        let last = prefix.broadcast_last();
+        for lane in last.lanes { assert(lane == running); }
+    }
+}
+
+fn check_expand() {
+    var input: u32[16] = [0; 16]; var out: u32[18] = [77; 18];
+    for i in 16 { input[i] = 0xFEDC0000 | ((i * 397 + 3) as u32); }
+    // Every mask catches lane ordering, not only all-on/all-off expansion.
+    for mask in 65536 {
+        var count = 0;
+        for i in 16 { if mask & (1 << i) != 0 { count += 1; } }
+        assert(simd_int::expand_u32(input[..count], out[1..17], mask as u16));
+        var next = 0;
+        for i in 16 {
+            if mask & (1 << i) != 0 { assert(out[i + 1] == input[next]); next += 1; }
+            else { assert(out[i + 1] == 0); }
+        }
+        assert(out[0] == 77 && out[17] == 77);
+    }
+    out[..].fill(77);
+    assert(!simd_int::expand_u32(input[..2], out, 0x8005));
+    assert(!simd_int::expand_u32(input, out[..15], 0));
+    for x in out { assert(x == 77); }
+}
+
+fn check_nibbles() {
+    var packed: u8[272] = [0; 272]; var output: u8[544] = [0; 544];
+    let table = "q8Z0a9X1b7W2c6V3";
+    for i in packed.len { packed[i] = (i % 256) as u8; }
+    for offset in 8 {
+        for len in 514 {
+            for low in [false, true] {
+                output[..].fill(199);
+                let input = packed[offset..offset + len / 2 + len % 2];
+                assert(simd_bytes::decode_nibbles(input, output[offset..offset + len], table, low));
+                for i in len {
+                    let shift = if (i % 2 == 0) == low { 0 } else { 4 };
+                    assert(output[offset + i] == table[(input[i / 2] >> shift) & 15]);
+                }
+                for byte in output[..offset] { assert(byte == 199); }
+                for byte in output[offset + len..] { assert(byte == 199); }
+                if len > 0 {
+                    output[..].fill(199);
+                    assert(!simd_bytes::decode_nibbles(input[..input.len - 1], output[..len], table, low));
+                    for byte in output { assert(byte == 199); }
+                }
+            }
+        }
+    }
+    assert(!simd_bytes::decode_nibbles(packed, output, table[..15], false));
+}
 
 fn check_search(s: const u8[:], a: u8, b: u8) {
     var byte_at = -1;
@@ -29,6 +105,9 @@ fn check_mask<L>(m: simd_bytes::Mask<L>, expected: u32, width: i64) {
 }
 
 fn main() {
+    check_integer_vectors();
+    check_expand();
+    check_nibbles();
     var data: u8[160] = [0; 160];
     // Every byte value, lane and alignment, including bit 31 of the mask.
     for offset in 32 {

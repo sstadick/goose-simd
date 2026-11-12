@@ -1,6 +1,7 @@
 // Experimental byte vectors. The API and representation are not stable.
 namespace simd_bytes;
 import std;
+import simd_int;
 
 // A byte vector. Supported lane types are u8[16] and u8[32]. Width is a
 // compile-time type choice, not an instruction-set requirement; use `load<V>`.
@@ -224,4 +225,23 @@ simd fn find_pair(s: const u8[:], a: u8, b: u8) -> i64 {
         if s[i] == a && s[i + 1] == b { return i; }
     }
     return -1;
+}
+
+extern fn decode_nibbles_raw(input: const u8[:], output: u8[:], table: const u8[:], low_first: u8) = "goosimd_nibbles";
+// Expand packed 4-bit indices through a 16-byte table into caller-owned output.
+// Returns false without writing when input or table is too short. The output
+// length determines how many nibbles to decode, including an odd last nibble.
+// Input, table and output must not overlap. low_first selects CRAM ordering;
+// false selects BAM ordering. Dispatches once per slice, with scalar tails.
+//
+// ```goose
+// let packed: u8[2] = [0x21, 0x43];
+// var out: u8[3] = [0; 3];
+// assert(simd_bytes::decode_nibbles(packed, out, "ABCDEFGHIJKLMNOP", true));
+// assert(out[0] == 'B' && out[1] == 'C' && out[2] == 'D');
+// ```
+fn decode_nibbles(input: const u8[:], output: u8[:], table: const u8[:], low_first: bool) -> bool {
+    if table.len < 16 || input.len < output.len / 2 + output.len % 2 { return false; }
+    decode_nibbles_raw(input, output, table, if low_first { 1 } else { 0 });
+    true
 }

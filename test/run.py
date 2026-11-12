@@ -12,8 +12,10 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--goose", default="goose", help="Goose compiler with package c_headers support")
-    parser.add_argument("--cc", default="cc", help="GCC/Clang-style C driver")
+    parser.add_argument("--cc", default="clang", help="native C driver")
     parser.add_argument("--avx2", action="store_true", help="also run AVX2; requires an AVX2 CPU")
+    parser.add_argument("--require-isa", choices=("auto", "avx2", "avx512", "neon"), default="auto",
+                        help="fail instead of claiming coverage on an unsupported CI host")
     args = parser.parse_args()
     goose = shutil.which(args.goose)
     cc = shutil.which(args.cc)
@@ -32,6 +34,28 @@ def main():
                                     capture_output=True, text=True, timeout=180)
             if result.returncode or (expected is not None and result.stdout.strip() != expected):
                 raise RuntimeError(f"{command}\n{result.stdout}{result.stderr}")
+            return result.stdout.strip()
+
+        hardware = out / "hardware.c"
+        hardware.write_text('''#include <stdio.h>
+int main(void) {
+#if defined(__aarch64__)
+    puts("neon");
+#elif defined(__x86_64__) || defined(__i386__)
+    if (__builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512bw") &&
+        __builtin_cpu_supports("avx512dq") && __builtin_cpu_supports("avx512vl")) puts("avx512");
+    else if (__builtin_cpu_supports("avx2")) puts("avx2");
+    else puts("scalar");
+#else
+    puts("scalar");
+#endif
+    return 0;
+}
+''')
+        probe = out / ("hardware" + suffix)
+        run([cc, "-O3", hardware, "-o", probe])
+        selected = run([probe], None if args.require_isa == "auto" else args.require_isa)
+        print(f"Native ISA: {selected}", flush=True)
 
         for level in (0, 2):
             run([goose, "run", f"-O{level}", source], "goose-simd checks passed")
@@ -50,7 +74,7 @@ def main():
                 assert f"simd_bytes_{kind}_g10_a{width}_u8" in generated
         assert "goosimd_Vec_g7_" not in generated
         assert "goosimd_Mask_g7_" not in generated
-        variants = [("native", []), ("baseline", ["-DGS_SIMD=0"]),
+        variants = [("native", ["-march=native"]), ("baseline", ["-DGS_SIMD=0"]),
                     ("scalar", ["-DGOOSIMD_SCALAR"])]
         if args.avx2:
             variants.append(("avx2", ["-mavx2"]))
@@ -59,7 +83,7 @@ def main():
             libs.append("-ldl")
         for name, flags in variants:
             binary = out / (name + suffix)
-            run([cc, "-O2", *flags, cfile, "-o", binary, *libs])
+            run([cc, "-O3", *flags, cfile, "-o", binary, *libs])
             run([binary], "goose-simd checks passed")
             print(f"PASS emitted C ({name})", flush=True)
 

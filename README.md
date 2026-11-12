@@ -1,7 +1,8 @@
 # goose-simd
 
 Compare 16 or 32 bytes at a time in [Goose](https://github.com/aardappel/goose),
-combine the results as masks, and find matching positions.
+combine the results as masks, find matching positions, expand packed nibbles,
+and compute unsigned integer prefix sums and masked lane expansion.
 
 **[API reference and examples](API.md)** · [Releases](https://github.com/sstadick/goose-simd/releases)
 
@@ -85,11 +86,40 @@ assert(simd_bytes::find_byte("hello", '?') == -1);
 For substring search, splitting, and other byte-string operations, use
 [goose-bstr](https://github.com/sstadick/goose-bstr).
 
+## Integer vectors and packed nibbles
+
+Import `simd_bytes` from this package and `simd_bytes.simd_int` for the
+`simd_int` namespace. These operations are new in v0.3.0.
+`U16x8` provides wrapping addition, inclusive prefix sums, unsigned comparison,
+selection, min/max, reductions and last-lane broadcast. `load_low_u16` extracts
+the low halves of eight u32 values; `expand_u32` distributes consecutive values
+into the set lanes of a 16-bit mask, filling other lanes with zero.
+
+`simd_bytes::decode_nibbles(input, output, table, low_first)` maps packed 4-bit
+indices through a 16-byte table. It supports both nibble orders, unaligned
+buffers and odd output lengths, and rejects short inputs without writing.
+Input/table/output must not overlap. See [executable examples](API.md).
+
+Nibble decoding selects SSSE3, AVX2 or **AVX-512 F/BW/DQ/VL** once per call on
+Clang/x86, or **NEON** on AArch64. It uses an overlapping last vector and a
+scalar tail for short inputs. Masked expansion uses AVX-512 F or NEON where
+available; other targets retain the scalar implementation. Integer-vector
+operations inline into Goose `simd fn` loops. The standalone native headers
+`include/goosimd_nibbles.h` and `include/goosimd_expand.h` also let native codec
+kernels reuse those operations without Goose ABI types.
+
+Local checks passed on Linux AVX2 and scalar/TinyCC. A Clang AArch64 build
+passed the same tests under QEMU, including all 65,536 expansion masks.
+**AVX-512 is compile-checked only; native ARM and AVX-512 performance are not
+measured.** `GOOSIMD_SCALAR` selects explicit scalar fallback implementations;
+`GS_SIMD=0` only disables Goose's function multiversioning, not the nibble
+kernel's independent runtime dispatch.
+
 ## Choose a compiler and target
 
 CI pins [Goose `d5ae5bbda990`](https://github.com/aardappel/goose/commit/d5ae5bbda990923fa4129f969c7f853c20d4d1e6)
-(`goose v2026.4-20-gd5ae5bbd`, runtime `d521138194f1`) for the TinyCC,
-GCC, and Clang checks below.
+(`goose v2026.4-20-gd5ae5bbd`, runtime `d521138194f1`) for the TinyCC
+and Clang checks below.
 
 Vector width and CPU instruction set are separate choices: a 32-byte vector
 does not require an AVX2 CPU.
@@ -137,23 +167,32 @@ executable requires an AVX2 CPU. For example, on Linux x86-64:
 
 ```sh
 goose --standalone -O2 -o demo.c main.goose
-clang -O2 -DGS_SIMD=0 -mavx2 demo.c -o demo -lm -pthread -ldl
+clang -O3 -march=native -DGS_SIMD=0 -mavx2 demo.c -o demo -lm -pthread -ldl
 ./demo
 ```
 
 `-DGS_SIMD=0` disables runtime selection in this fixed-target build.
 Clang's runtime AVX2 selection also checks FMA, BMI1/2, LZCNT, POPCNT, and
-OS support. Tested on Linux x86-64; ARM and Windows are unverified.
+OS support. Windows is unverified; see the architecture checks above.
 
 ## Contributing
 
-Tests require Python 3, Goose, and GCC or Clang:
+Tests require Python 3, Goose, and Clang:
 
 ```sh
 python3 test/run.py --goose /path/to/goose --cc clang
 # On an AVX2-capable machine:
-python3 test/run.py --goose /path/to/goose --cc gcc --avx2
+python3 test/run.py --goose /path/to/goose --cc clang --avx2
+# On supported hosts; wrong hardware is an error, not a successful skip:
+python3 test/run.py --cc clang --require-isa neon
+python3 test/run.py --cc clang --require-isa avx512
 ```
+
+CI is configured for `ubuntu-24.04` and `ubuntu-24.04-arm`. The manual workflow
+accepts a `runners` JSON array (for example `["your-avx512-runner-label"]`)
+and `require_isa=avx512` for a suitably provisioned runner. No AVX-512 runner
+is provisioned by this repository. See the [CI runs](https://github.com/sstadick/goose-simd/actions/workflows/ci.yml)
+for hardware coverage; the test log reports the selected native ISA.
 
 Edit API documentation in the source comments, not `API.md`. With
 [goose-doc](https://github.com/sstadick/goose-doc/commit/f7292c9ee395596fa39eb709f90dc71ef124a0eb)
@@ -163,7 +202,6 @@ checked out at `../goose-doc`, run:
 scripts/docs.sh
 scripts/docs.sh --check
 scripts/doctest.sh
-scripts/doctest.sh --cc gcc
 scripts/doctest.sh --cc clang
 ```
 
