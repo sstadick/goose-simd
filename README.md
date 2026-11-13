@@ -120,8 +120,8 @@ kernel's independent runtime dispatch.
 
 ## Choose a compiler and target
 
-CI pins [Goose `d5ae5bbda990`](https://github.com/aardappel/goose/commit/d5ae5bbda990923fa4129f969c7f853c20d4d1e6)
-(`goose v2026.4-20-gd5ae5bbd`, runtime `d521138194f1`) for the TinyCC
+CI pins [Goose `855f1037a5ce`](https://github.com/aardappel/goose/commit/855f1037a5ceee837ef270382ac8d26df47a7139)
+(`goose v2026.4-24-g855f1037`, runtime `d521138194f1`) for the TinyCC
 and Clang checks below.
 
 Vector width and CPU instruction set are separate choices: a 32-byte vector
