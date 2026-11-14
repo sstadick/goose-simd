@@ -120,9 +120,16 @@ kernel's independent runtime dispatch.
 
 ## Choose a compiler and target
 
-CI pins [Goose `855f1037a5ce`](https://github.com/aardappel/goose/commit/855f1037a5ceee837ef270382ac8d26df47a7139)
-(`goose v2026.4-24-g855f1037`, runtime `d521138194f1`) for the TinyCC
+CI pins [Goose `4602c9866067`](https://github.com/aardappel/goose/commit/4602c98660676b2cb94bc9b06fec8c65b37fce92)
+(`goose v2026.4-26-g4602c986`, runtime `d521138194f1`) for the TinyCC
 and Clang checks below.
+
+This compiler checks the code executed by `checkfree` callers, without requiring
+callee annotations. The package's unannotated functions can be used from such
+callers when all Goose bounds checks are proved away. Caller-created slices
+still need their own bounds proofs (for example, `assert(bytes.len >= 1)` before
+`bytes[1..]`). Load-length assertions remain active: `checkfree` permits assertions
+and does not verify native C adapter internals.
 
 Vector width and CPU instruction set are separate choices: a 32-byte vector
 does not require an AVX2 CPU.
